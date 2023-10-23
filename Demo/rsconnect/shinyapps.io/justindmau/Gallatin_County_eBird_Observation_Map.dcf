@@ -1,0 +1,13 @@
+name: Gallatin_County_eBird_Observation_Map
+title: Gallatin_County_eBird_Observation_Map
+username: justindmau
+account: justindmau
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 10281297
+bundleId:
+url: https://justindmau.shinyapps.io/Gallatin_County_eBird_Observation_Map/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: County_Boundaries.csv|FWP.geojson|Gallatin_County_Border.csv|gallatin_county_boundary.geojson|observations.geojson

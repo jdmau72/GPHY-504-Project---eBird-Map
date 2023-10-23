@@ -1,0 +1,13 @@
+name: Gallatin_County_eBird_Observation_Data
+title: Gallatin_County_eBird_Observation_Data
+username:
+account: justindmau
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 10281432
+bundleId: 7840179
+url: https://justindmau.shinyapps.io/Gallatin_County_eBird_Observation_Data/
+when: 1698074140.14831
+lastSyncTime: 1698074140.14835
+asMultiple: FALSE
+asStatic: FALSE

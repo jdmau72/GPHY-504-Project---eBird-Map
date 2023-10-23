@@ -7,6 +7,8 @@
 #    http://shiny.rstudio.com/
 #
 
+
+
 library(shiny)
 library(auk)
 library(lubridate)
@@ -140,7 +142,7 @@ server <- function(input, output) {
       addHeatmap(
         data= obs_sf(),
         group = 'heatmap',
-        radius= 20,
+        radius= 30,
         blur = 10,
         max= 50
       )
