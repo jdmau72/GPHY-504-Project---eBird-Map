@@ -64,6 +64,7 @@ ui <- fillPage(
                       dateInput("start_date", h4("Start Date"), value="2021-01-01"),
                       dateInput("end_date", h4("End Date"), value="2023-01-01"),
                       
+                      h4("Hourly Distribution of Observations"),
                       plotOutput("distPlot", width = "95%"),
                       h2(""),
                       img(src="north_arrow.png", right=0, top=20, width = 50)
