@@ -1,8 +1,0 @@
-{
-"type": "FeatureCollection",
-"name": "Common Tern",
-"features": [
-{ "type": "Feature", "properties": { "common_name": "Common Tern", "locality": "Three Forks Ponds", "observation_count": "1", "observation_date": "2022-05-01", "time_observations_started": "17:35:00", "longitude": -111.5368438, "latitude": 45.8963354 }, "geometry": { "type": "Point", "coordinates": [ -111.5368438, 45.8963354 ] } },
-{ "type": "Feature", "properties": { "common_name": "Common Tern", "locality": "Three Forks Ponds", "observation_count": "2", "observation_date": "2022-05-01", "time_observations_started": "16:00:00", "longitude": -111.5368438, "latitude": 45.8963354 }, "geometry": { "type": "Point", "coordinates": [ -111.5368438, 45.8963354 ] } }
-]
-}
