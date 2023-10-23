@@ -12,12 +12,13 @@ library(auk)
 library(lubridate)
 library(ggplot2)
 library(leaflet)
+library(leaflet.extras)
 library(geojsonio)
 library(sf)
 library(jsonlite)
-library(geojsonlint)
+#library(geojsonlint)
 
-ebd_filename = "ebd_US-MT-031_relJun-2023.txt"
+ebd_filename = "ebd_2021_2023.txt"
 geojson_filename = "observations.geojson"
 FWP = geojson_read("FWP.geojson")
 
@@ -26,44 +27,63 @@ cwd <- getwd()
 ebird_data <- auk_ebd(ebd_filename)
 f_out <- "ebd_filtered.txt"
 
+# get all species from the ebd_file to load them into the selectInput panel
+ebd_speciesList <- ebd_filename %>% 
+  read_ebd(rollup = FALSE)
+ebd_speciesList <- unique(ebd_speciesList$common_name)
+
+# reads in the csv for the Gallatin County Border
+gallatin_border <- st_as_sf( st_read("gallatin_county_boundary.geojson"), as= "list")
+
+
+
+
+
+
+
 # Define UI for application that draws a histogram ---
-ui <- fluidPage( 
-
-    # Application title
-    titlePanel("Observation Distributions"),
-
+ui <- fillPage( 
 
     sidebarLayout(          
       mainPanel(
-        leafletOutput("map", width="100%", height=800)
+        leafletOutput("map", width="160%", height="1000")
       ),
       
   
-      absolutePanel(id="settings", fixed=TRUE, draggable=TRUE, 
-                      top=60, left="auto", right=20, bottom="auto", width=330, height="auto",
+      absolutePanel(id="settings", fixed=TRUE, draggable=FALSE, 
+                      top="1%", left="auto", right=10, bottom="1%", width=360, height="auto", style = "background: rgba(255, 255, 255, 0.8); padding: 10px",
                       
-                      h2(""),
+                      h2("eBird Observations Map"),
+                    
+                      checkboxInput("displayClusters_checkbox", "Display Clustered Observations"),
                       
                       #textInput("species_name", h4("Bird Name"), value = "Belted Kingfisher"),
-                      selectInput("species_name", h4("Bird Name"), c("Belted Kingfisher", "Ruffed Grouse", "Dusky Grouse", "Western Tanager")),
-                      dateInput("start_date", h4("Start Date"), value="2023-05-01"),
-                      dateInput("end_date", h4("End Date"), value="2023-07-31"),
+                      selectInput("species_name", h4("Bird Name"), choices = ebd_speciesList),
+                      dateInput("start_date", h4("Start Date"), value="2021-01-01"),
+                      dateInput("end_date", h4("End Date"), value="2023-01-01"),
                       
-                      plotOutput("distPlot")
+                      plotOutput("distPlot", width = "95%"),
+                      h2(""),
+                      img(src="north_arrow.png", right=0, top=20, width = 50)
                     )
     )
 )
 
 
   
-# Define server logic required to draw a histogram
+# Define server logic 
 server <- function(input, output) {
+  
+  
   
   # renders the basic leaflet map 
   output$map <- renderLeaflet({
       leaflet() %>%
-      addTiles() %>%
+      addProviderTiles(provider = "Esri.WorldTopoMap") %>%
+      addScaleBar(position = "topleft") %>%
+      # addGeoJSON(geojson = 'FWP', data = FWP) %>%
       setView(lng = -111.0, lat = 45.7, zoom = 9.5)
+      
   })
   
   # when inputs change, updates the reactive obs_sf value that gets used by other functions
@@ -81,23 +101,52 @@ server <- function(input, output) {
   })
   
   
+  # variable that is set to the value of the checkbox, so you can turn off clusters
+  displayCluster <- reactive({
+    input$displayClusters_checkbox
+  })
+
+  
   # observe function, so when inputs change, the map layer with observations will update
   observe({
-    print(obs_sf()$checklist_id)
     leafletProxy("map") %>%
       clearGroup('observations') %>%
-      addTiles() %>%
-      addMarkers(
-        data = obs_sf(), 
-        group = 'observations',
-        label = lapply(obs_sf()$locality, HTML),
-        layerId = ~obs_sf()$checklist_id
-        ,clusterOptions = markerClusterOptions()
-        ) %>% 
-      addGeoJSON(geojson = 'FWP', data = FWP)
+      # addTiles() %>%
+      addGeoJSON(geojson = gallatin_border )
+    
+    if (displayCluster()){  # when display cluster checked, uses clusterOptions
+      leafletProxy("map") %>%
+        addMarkers(
+          data = obs_sf(), 
+          group = 'observations',
+          label = lapply(obs_sf()$locality, HTML),
+          layerId = ~obs_sf()$checklist_id,
+          clusterOptions = markerClusterOptions()
+        )
+    } else {
+      # leafletProxy("map") %>%
+      #   addMarkers(
+      #     data = obs_sf(), 
+      #     group = 'observations',
+      #     label = lapply(obs_sf()$locality, HTML),
+      #     layerId = ~obs_sf()$checklist_id,
+      #     options = markerOptions(minZoom = 6, maxZoom = 5)
+      #   )
+    }
+    
+    # adds the heatmap regardless
+    leafletProxy("map") %>%
+      clearGroup('heatmap') %>%
+      addHeatmap(
+        data= obs_sf(),
+        group = 'heatmap',
+        radius= 20,
+        blur = 10,
+        max= 50
+      )
   })
   
-  
+  # code for displaying info about the hotspot when you click on it
   showObservationPopup <- function(id, lat, lng){
     obs <- obs_sf()[obs_sf()$checklist_id == id, ]  # gets that specific observation
     content <- as.character(tagList(
@@ -134,7 +183,7 @@ server <- function(input, output) {
     
     # M Trail bbox: -110.9771565,  45.7098916, -110.9769621, 45.7100700
     # E. Bozeman Area bbox:  -111.11, 45.77, -110.93, 45.59
-    ebd_filters <- auk_bbox(ebd_filters, bbox = c(-111.11, 45.59, -110.93,  45.77))
+    # ebd_filters <- auk_bbox(ebd_filters, bbox = c(-111.11, 45.59, -110.93,  45.77))
     
     
     # filter data using filters and load in dataframe ------------------
@@ -171,6 +220,8 @@ server <- function(input, output) {
       print(plt)
 
     })
+  
+  
 }
 
 
