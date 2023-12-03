@@ -18,6 +18,7 @@ library(leaflet.extras)
 library(geojsonio)
 library(sf)
 library(jsonlite)
+library(shinyjs)
 #library(geojsonlint)
 
 ebd_filename = "ebd_2021_2023.txt"
@@ -44,8 +45,11 @@ gallatin_border <- st_as_sf( st_read("gallatin_county_boundary.geojson"), as= "l
 
 
 # Define UI for application that draws a histogram ---
-ui <- fillPage( 
+ui <- fluidPage(
+#ui <- fillPage( 
 
+    useShinyjs(), # got from gpt? might not work
+  
     sidebarLayout(          
       mainPanel(
         leafletOutput("map", width="160%", height="1000")
@@ -67,10 +71,21 @@ ui <- fillPage(
                       h4("Hourly Distribution of Observations"),
                       plotOutput("distPlot", width = "95%"),
                       h2(""),
-                      img(src="north_arrow.png", right=0, top=20, width = 50)
+                      img(src="north_arrow.png", right=0, top=20, width = 50),
+                    
+                      actionButton("animate", "Play")
                     )
     )
 )
+
+
+
+
+# ---------------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------
 
 
   
@@ -108,7 +123,6 @@ server <- function(input, output) {
   displayCluster <- reactive({
     input$displayClusters_checkbox
   })
-
   
   # observe function, so when inputs change, the map layer with observations will update
   observe({
@@ -177,6 +191,108 @@ server <- function(input, output) {
   })
   
   
+  
+  
+  
+  
+  
+  
+  
+  
+  # IN PROGRESS... ---------------------------------------------------------------------
+  #  ---------------------------------------------------------------------
+  # --------------. \/ \/ \/ \/---------------------------------------------------------------------
+
+  
+  
+  # adding code to try to visualize observations/migration patterns
+  observeEvent(input$animate, {
+    print("Clicked play button...")
+    # first clears the map of observations
+    leafletProxy("map") %>%
+      clearGroup('observations') %>%
+      clearGroup('heatmap')
+    
+    # now it needs to filter the observations again based on bin size 
+    bin_size = 12 # monthly
+    #print(filteredData())
+    ebd_df <- filteredData()
+    observed_df <- subset(ebd_df, select = c('checklist_id', 'common_name', 'locality', 'observation_count', 'observation_date', 'time_observations_started', 'longitude', 'latitude'))
+    print(as.integer(format(input$start_date, '%m')))
+    print(input$end_date)
+    
+    obs_list <-list()
+    
+    #observed_df$Month <- as.integer(format(observed_df$observation_date, "%m"))
+    for (i in 1:bin_size){
+      print(paste("i = ", i, "   |?|   m = ", as.integer(format(observed_df[["observation_date"]][1], "%m"))))
+      #obs_list[i] = subset(observed_df, 
+      #                     subset = as.integer(format(observation_date, "%m")) == i
+      obs_list[[i]] <- observed_df[as.integer(format(observed_df[["observation_date"]], "%m")) == i, ]
+      #print(obs_list[[i]])
+    }  
+    
+    
+    #print(obs_list[i])
+    
+    
+    # converts from data.frame to a sf object for each subset of observations to be displayed
+    for (i in 1:bin_size){
+      print(obs_list[[i]])
+      sf <- st_as_sf(
+        obs_list[[i]],
+        coords = c("longitude", "latitude"),
+        crs = 4326
+      )
+      obs_list[[i]] <- sf
+    }
+    
+  
+    for (i in 1:bin_size){
+      print(obs_list[[i]])
+      #delay(5000, animate_observations(obs_list[[i]], i))
+      leafletProxy("map") %>%
+        addMarkers(
+          data = obs_list[[i]], 
+          group = paste('animated_observations_', as.character(i))
+        ) %>%
+        hideGroup(paste('animated_observations_', as.character(i)))
+    }
+    
+    print("okay now it has created all of these observation layers by month, now to try to display them sequentially...   ----------------------------------------")
+          
+    for (i in 1:bin_size){      
+      delay(1000, animate_observations(i))
+    }
+  
+  })
+  
+  # function for animating observations, STILL IS NOT WORKING, ONLY ENDS UP DISPLAYING THE LAST OF THEM!!!
+  animate_observations <- function(i){
+    if (i == 1){
+      leafletProxy("map") %>%
+        showGroup(paste('animated_observations_', as.character(i)))
+    } else {
+      leafletProxy("map") %>%
+        hideGroup(paste('animated_observations_', as.character(i - 1))) %>%
+        showGroup(paste('animated_observations_', as.character(i)))
+    }
+    
+  }
+  # IN PROGRESS... /\ /\ /\ /\ ---------------------------------------------------------------------
+  #  ---------------------------------------------------------------------
+  # --------------. ---------------------------------------------------------------------
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
   # reactive function, anytime input updates it will reprocess data and filter
   # as well as save to geojson format
   filteredData <- reactive({
@@ -224,6 +340,7 @@ server <- function(input, output) {
 
     })
   
+  # ADD CODE TO DISPLAY HISTOGRAM FOR SEASONAL OBSERVATION DISTRIBUTION
   
 }
 
