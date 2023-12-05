@@ -21,9 +21,14 @@ library(jsonlite)
 library(shinyjs)
 #library(geojsonlint)
 
+
+# globals ----------------------------------
 ebd_filename = "ebd_2021_2023.txt"
 geojson_filename = "observations.geojson"
 FWP = geojson_read("FWP.geojson")
+
+bin_size <- 12
+currentMonth <- 1
 
 # set up working directory -----------------------
 cwd <- getwd()
@@ -63,6 +68,7 @@ ui <- fluidPage(
                     
                       checkboxInput("displayClusters_checkbox", "Display Clustered Observations"),
                       
+                      sliderInput("monthSlider", "Month", min = 1, max = 12, value = 1, step = 1, animate = animationOptions(interval = 1000, loop = TRUE)),
                       #textInput("species_name", h4("Bird Name"), value = "Belted Kingfisher"),
                       selectInput("species_name", h4("Bird Name"), choices = ebd_speciesList),
                       dateInput("start_date", h4("Start Date"), value="2021-01-01"),
@@ -213,58 +219,25 @@ server <- function(input, output) {
       clearGroup('observations') %>%
       clearGroup('heatmap')
     
-    # now it needs to filter the observations again based on bin size 
-    bin_size = 12 # monthly
-    #print(filteredData())
-    ebd_df <- filteredData()
-    observed_df <- subset(ebd_df, select = c('checklist_id', 'common_name', 'locality', 'observation_count', 'observation_date', 'time_observations_started', 'longitude', 'latitude'))
-    print(as.integer(format(input$start_date, '%m')))
-    print(input$end_date)
-    
-    obs_list <-list()
-    
-    #observed_df$Month <- as.integer(format(observed_df$observation_date, "%m"))
-    for (i in 1:bin_size){
-      print(paste("i = ", i, "   |?|   m = ", as.integer(format(observed_df[["observation_date"]][1], "%m"))))
-      #obs_list[i] = subset(observed_df, 
-      #                     subset = as.integer(format(observation_date, "%m")) == i
-      obs_list[[i]] <- observed_df[as.integer(format(observed_df[["observation_date"]], "%m")) == i, ]
-      #print(obs_list[[i]])
-    }  
-    
-    
-    #print(obs_list[i])
-    
-    
-    # converts from data.frame to a sf object for each subset of observations to be displayed
-    for (i in 1:bin_size){
-      print(obs_list[[i]])
-      sf <- st_as_sf(
-        obs_list[[i]],
-        coords = c("longitude", "latitude"),
-        crs = 4326
-      )
-      obs_list[[i]] <- sf
-    }
-    
+    animate_observations_oneStep()
   
+  })
+  
+  observe({
+    currentMonth <- input$monthSlider
+    
+    # first hides all the observations
+    leafletProxy("map") %>%
+      clearGroup('observations') %>%
+      clearGroup('heatmap')
+
     for (i in 1:bin_size){
-      print(obs_list[[i]])
-      #delay(5000, animate_observations(obs_list[[i]], i))
       leafletProxy("map") %>%
-        addMarkers(
-          data = obs_list[[i]], 
-          group = paste('animated_observations_', as.character(i))
-        ) %>%
         hideGroup(paste('animated_observations_', as.character(i)))
     }
     
-    print("okay now it has created all of these observation layers by month, now to try to display them sequentially...   ----------------------------------------")
-          
-    for (i in 1:bin_size){      
-      delay(1000, animate_observations(i))
-    }
-  
+    leafletProxy("map") %>%
+      showGroup(paste('animated_observations_', as.character(currentMonth)))
   })
   
   # function for animating observations, STILL IS NOT WORKING, ONLY ENDS UP DISPLAYING THE LAST OF THEM!!!
@@ -276,6 +249,26 @@ server <- function(input, output) {
       leafletProxy("map") %>%
         hideGroup(paste('animated_observations_', as.character(i - 1))) %>%
         showGroup(paste('animated_observations_', as.character(i)))
+    }
+  }
+  
+  
+  # added this to just click the button and have it advance one each time
+  animate_observations_oneStep <- function(){
+    print(paste("Printing out observations for ", month.name[currentMonth]))
+    if (currentMonth == 1){
+      leafletProxy("map") %>%
+        hideGroup(paste('animated_observations_', as.character(bin_size))) %>%
+        showGroup(paste('animated_observations_', as.character(currentMonth)))
+    } else {
+      leafletProxy("map") %>%
+        hideGroup(paste('animated_observations_', as.character(currentMonth - 1))) %>%
+        showGroup(paste('animated_observations_', as.character(currentMonth)))
+    }
+    
+    currentMonth <<- currentMonth + 1
+    if (currentMonth > bin_size){
+      currentMonth <<- 1
     }
     
   }
@@ -309,6 +302,52 @@ server <- function(input, output) {
     ebd_filtered <- auk_filter(ebd_filters, file = f_out, overwrite = TRUE)
     ebd_df <- read_ebd(ebd_filtered)
   })
+  
+  
+  # observe for updating the monthly observations layer
+  observe({
+    ebd_df <- filteredData()
+    observed_df <- subset(ebd_df, select = c('checklist_id', 'common_name', 'locality', 'observation_count', 'observation_date', 'time_observations_started', 'longitude', 'latitude'))
+    print(as.integer(format(input$start_date, '%m')))
+    print(input$end_date)
+    obs_list <-list()
+    
+    #observed_df$Month <- as.integer(format(observed_df$observation_date, "%m"))
+    for (i in 1:bin_size){
+      print(paste("i = ", i, "   |?|   m = ", as.integer(format(observed_df[["observation_date"]][1], "%m"))))
+      #obs_list[i] = subset(observed_df, 
+      #                     subset = as.integer(format(observation_date, "%m")) == i
+      obs_list[[i]] <- observed_df[as.integer(format(observed_df[["observation_date"]], "%m")) == i, ]
+      #print(obs_list[[i]])
+    }  
+
+    # converts from data.frame to a sf object for each subset of observations to be displayed
+    for (i in 1:bin_size){
+      print(obs_list[[i]])
+      sf <- st_as_sf(
+        obs_list[[i]],
+        coords = c("longitude", "latitude"),
+        crs = 4326
+      )
+      obs_list[[i]] <- sf
+    }
+    
+    # now it creates and hides each month's observation
+    for (i in 1:bin_size){
+      print(obs_list[[i]])
+      leafletProxy("map") %>%
+        addMarkers(
+          data = obs_list[[i]], 
+          group = paste('animated_observations_', as.character(i))
+        ) %>%
+        hideGroup(paste('animated_observations_', as.character(i)))
+    }
+    
+    print("okay now it has created all of these observation layers by month, now to try to display them sequentially...   ----------------------------------------")
+  })
+  
+  
+  
   
   
   # code to render histogram, calculates avg observation hour
