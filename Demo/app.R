@@ -336,6 +336,7 @@ server <- function(input, output) {
     for (i in 1:bin_size){
       print(obs_list[[i]])
       leafletProxy("map") %>%
+        clearGroup(paste('animated_observations_', as.character(i))) %>%
         addMarkers(
           data = obs_list[[i]], 
           group = paste('animated_observations_', as.character(i))
