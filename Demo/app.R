@@ -69,6 +69,8 @@ ui <- fluidPage(
                       checkboxInput("displayClusters_checkbox", "Display Clustered Observations"),
                       
                       sliderInput("monthSlider", "Month", min = 1, max = 12, value = 1, step = 1, animate = animationOptions(interval = 1000, loop = TRUE)),
+                      sliderInput("yearSlider", "Years", min = 2002, max = year(Sys.Date()), value = c(2021, 2023), step = 1), 
+                    
                       #textInput("species_name", h4("Bird Name"), value = "Belted Kingfisher"),
                       selectInput("species_name", h4("Bird Name"), choices = ebd_speciesList),
                       dateInput("start_date", h4("Start Date"), value="2021-01-01"),
@@ -289,9 +291,17 @@ server <- function(input, output) {
   # reactive function, anytime input updates it will reprocess data and filter
   # as well as save to geojson format
   filteredData <- reactive({
+    print(input$yearSlider[1])
+    
+    
+    startDate = as.Date(paste(input$yearSlider[1], 1, 1, sep="-"))
+    endDate = as.Date(paste(input$yearSlider[2], 12, 31, sep="-"))
+    
+    print(startDate)
+    
     # define the filters -----------------------
     ebd_filters <- auk_species(ebird_data, species = input$species_name)
-    ebd_filters <- auk_date(ebd_filters, date = c(input$start_date, input$end_date))
+    ebd_filters <- auk_date(ebd_filters, date = c(startDate, endDate))
     
     # M Trail bbox: -110.9771565,  45.7098916, -110.9769621, 45.7100700
     # E. Bozeman Area bbox:  -111.11, 45.77, -110.93, 45.59
