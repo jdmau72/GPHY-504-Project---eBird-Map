@@ -73,8 +73,8 @@ ui <- fluidPage(
                     
                       #textInput("species_name", h4("Bird Name"), value = "Belted Kingfisher"),
                       selectInput("species_name", h4("Bird Name"), choices = ebd_speciesList),
-                      dateInput("start_date", h4("Start Date"), value="2021-01-01"),
-                      dateInput("end_date", h4("End Date"), value="2023-01-01"),
+                      #dateInput("start_date", h4("Start Date"), value="2021-01-01"),
+                      #dateInput("end_date", h4("End Date"), value="2023-01-01"),
                       
                       h4("Hourly Distribution of Observations"),
                       plotOutput("distPlot", width = "95%"),
@@ -241,39 +241,8 @@ server <- function(input, output) {
     leafletProxy("map") %>%
       showGroup(paste('animated_observations_', as.character(currentMonth)))
   })
-  
-  # function for animating observations, STILL IS NOT WORKING, ONLY ENDS UP DISPLAYING THE LAST OF THEM!!!
-  animate_observations <- function(i){
-    if (i == 1){
-      leafletProxy("map") %>%
-        showGroup(paste('animated_observations_', as.character(i)))
-    } else {
-      leafletProxy("map") %>%
-        hideGroup(paste('animated_observations_', as.character(i - 1))) %>%
-        showGroup(paste('animated_observations_', as.character(i)))
-    }
-  }
-  
-  
-  # added this to just click the button and have it advance one each time
-  animate_observations_oneStep <- function(){
-    print(paste("Printing out observations for ", month.name[currentMonth]))
-    if (currentMonth == 1){
-      leafletProxy("map") %>%
-        hideGroup(paste('animated_observations_', as.character(bin_size))) %>%
-        showGroup(paste('animated_observations_', as.character(currentMonth)))
-    } else {
-      leafletProxy("map") %>%
-        hideGroup(paste('animated_observations_', as.character(currentMonth - 1))) %>%
-        showGroup(paste('animated_observations_', as.character(currentMonth)))
-    }
     
-    currentMonth <<- currentMonth + 1
-    if (currentMonth > bin_size){
-      currentMonth <<- 1
-    }
-    
-  }
+  
   # IN PROGRESS... /\ /\ /\ /\ ---------------------------------------------------------------------
   #  ---------------------------------------------------------------------
   # --------------. ---------------------------------------------------------------------
@@ -340,18 +309,33 @@ server <- function(input, output) {
         crs = 4326
       )
       obs_list[[i]] <- sf
+      
+      
     }
     
     # now it creates and hides each month's observation
     for (i in 1:bin_size){
-      print(obs_list[[i]])
+      #print(obs_list[[i]])
+      
+      # adds a heatmap of the observations
       leafletProxy("map") %>%
         clearGroup(paste('animated_observations_', as.character(i))) %>%
-        addMarkers(
-          data = obs_list[[i]], 
-          group = paste('animated_observations_', as.character(i))
+        addHeatmap(
+          data= obs_list[[i]],
+          group = paste('animated_observations_', as.character(i)),
+          radius= 30,
+          blur = 10,
+          max= 25
         ) %>%
         hideGroup(paste('animated_observations_', as.character(i)))
+      
+      # adds the individual simple markers for the observations
+      #leafletProxy("map") %>%
+      #  addMarkers(
+      #    data = obs_list[[i]], 
+      #    group = paste('animated_observations_', as.character(i))
+      #  ) %>%
+      #  hideGroup(paste('animated_observations_', as.character(i)))
     }
     
     print("okay now it has created all of these observation layers by month, now to try to display them sequentially...   ----------------------------------------")
