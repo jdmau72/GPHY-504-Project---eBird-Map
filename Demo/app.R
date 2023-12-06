@@ -41,10 +41,11 @@ ebd_speciesList <- unique(ebd_speciesList$common_name)
 
 # reads in the csv for the Gallatin County Border
 #gallatin_border <- st_as_sf( st_read("gallatin_county_boundary.geojson"), as= "list")
-gallatin_border <- geojson_read("gallatin_county_boundary.geojson")
-FWP <- geojson_read("FWP.geojson", what = "sp")
+#gallatin_border <- geojson_read("gallatin_county_boundary.geojson")
+#FWP <- geojson_read("FWP.geojson", what = "sp")
 
-
+gallatin_border <- geojson_read("CountyBorder_Gallatin.geojson")
+FWP <- geojson_read("FWP_Gallatin.geojson", what = "sp")
 
 
 
@@ -79,8 +80,6 @@ ui <- fluidPage(
                       plotOutput("distPlot", width = "95%"),
                       h2(""),
                       img(src="north_arrow.png", right=0, top=20, width = 50),
-                    
-                      actionButton("animate", "Play")
                     )
     )
 )
