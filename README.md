@@ -7,8 +7,16 @@ The side panel has filtering options, as well as a histogram displaying the dist
 
 The gallatin_county_boundary.geojson and FWP.geojson files will be added to the map in the future. For now, I was having trouble displaying them properly on the Leaflet map. 
 
-## Data source 
+
+## eBird Observation Data:
 eBird Basic Dataset. Version: EBD_relJun-2023. Cornell Lab of Ornithology, Ithaca, New York. Jun 2023.
+
+## FWP Lands Sites - Polygons:
+https://gis-mtfwp.hub.arcgis.com/datasets/c7ad2cc2f8ec4195967abe6db90fe481_0/explore?location=46.754805%2C-109.688161%2C7.04
+
+## Gallatin County Boundary:
+https://hub.arcgis.com/datasets/montana::county-boundaries/about
+
 
 ## Website (Hosted by Shinyio)
 https://justindmau.shinyapps.io/eBird_Observation_Map/
