@@ -25,7 +25,6 @@ library(shinyjs)
 # globals ----------------------------------
 ebd_filename = "ebd_2021_2023.txt"
 geojson_filename = "observations.geojson"
-FWP = geojson_read("FWP.geojson")
 
 bin_size <- 12
 currentMonth <- 1
@@ -41,9 +40,9 @@ ebd_speciesList <- ebd_filename %>%
 ebd_speciesList <- unique(ebd_speciesList$common_name)
 
 # reads in the csv for the Gallatin County Border
-gallatin_border <- st_as_sf( st_read("gallatin_county_boundary.geojson"), as= "list")
-
-
+#gallatin_border <- st_as_sf( st_read("gallatin_county_boundary.geojson"), as= "list")
+gallatin_border <- geojson_read("gallatin_county_boundary.geojson")
+FWP <- geojson_read("FWP.geojson", what = "sp")
 
 
 
@@ -104,10 +103,15 @@ server <- function(input, output) {
   
   # renders the basic leaflet map 
   output$map <- renderLeaflet({
-      leaflet() %>%
+      leaflet(FWP) %>%
       addProviderTiles(provider = "Esri.WorldTopoMap") %>%
       addScaleBar(position = "topleft") %>%
       # addGeoJSON(geojson = 'FWP', data = FWP) %>%
+      addGeoJSON(geojson = gallatin_border, color = "black", weight = 1, fillOpacity = 0) %>%
+      #addGeoJSON(geojson = FWP, color = "orange", weight = 1, fillOpacity = 0, 
+      #            label = ~properties$PUBNAME) %>%
+      addPolygons(stroke = FALSE, fillOpacity = 0.5, fillColor = "orange", 
+                  label = ~paste0(PUBNAME, " ", PUBTYPE)) %>%
       setView(lng = -111.0, lat = 45.7, zoom = 9.5)
       
   })
@@ -135,9 +139,9 @@ server <- function(input, output) {
   # observe function, so when inputs change, the map layer with observations will update
   observe({
     leafletProxy("map") %>%
-      clearGroup('observations') %>%
+      clearGroup('observations')
       # addTiles() %>%
-      addGeoJSON(geojson = gallatin_border )
+      #addGeoJSON(geojson = gallatin_border )
     
     if (displayCluster()){  # when display cluster checked, uses clusterOptions
       leafletProxy("map") %>%
@@ -225,6 +229,7 @@ server <- function(input, output) {
   
   })
   
+  
   observe({
     currentMonth <- input$monthSlider
     
@@ -287,13 +292,13 @@ server <- function(input, output) {
   observe({
     ebd_df <- filteredData()
     observed_df <- subset(ebd_df, select = c('checklist_id', 'common_name', 'locality', 'observation_count', 'observation_date', 'time_observations_started', 'longitude', 'latitude'))
-    print(as.integer(format(input$start_date, '%m')))
-    print(input$end_date)
+    #print(as.integer(format(input$start_date, '%m')))
+    #print(input$end_date)
     obs_list <-list()
     
     #observed_df$Month <- as.integer(format(observed_df$observation_date, "%m"))
     for (i in 1:bin_size){
-      print(paste("i = ", i, "   |?|   m = ", as.integer(format(observed_df[["observation_date"]][1], "%m"))))
+      #print(paste("i = ", i, "   |?|   m = ", as.integer(format(observed_df[["observation_date"]][1], "%m"))))
       #obs_list[i] = subset(observed_df, 
       #                     subset = as.integer(format(observation_date, "%m")) == i
       obs_list[[i]] <- observed_df[as.integer(format(observed_df[["observation_date"]], "%m")) == i, ]
@@ -302,7 +307,7 @@ server <- function(input, output) {
 
     # converts from data.frame to a sf object for each subset of observations to be displayed
     for (i in 1:bin_size){
-      print(obs_list[[i]])
+      #print(obs_list[[i]])
       sf <- st_as_sf(
         obs_list[[i]],
         coords = c("longitude", "latitude"),
