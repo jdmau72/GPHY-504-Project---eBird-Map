@@ -21,4 +21,4 @@ https://hub.arcgis.com/datasets/montana::county-boundaries/about
 
 
 ## Website (Hosted by Shinyio)
-https://justindmau.shinyapps.io/eBird_Observation_Map/
+https://justindmau.shinyapps.io/Gallatin_County_eBird_Observation_Data/
