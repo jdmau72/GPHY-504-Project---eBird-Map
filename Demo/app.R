@@ -61,13 +61,17 @@ ui <- fluidPage(
 #ui <- fillPage( 
 
     includeCSS("style.css"), # honestly not sure if this CSS actually affects anything unfortunately
-  
-    sidebarLayout( 
-      
-      mainPanel(
-        leafletOutput("map", width="100vh", height="100vh")
+    leafletOutput("map", width="100%", height="99vh"),
+    
+    #sidebarLayout( 
+    fluidRow( 
+     column(9,
+        mainPanel(
+          
+        )
       ),
       
+     column(3,
       absolutePanel(
         id="settings", fixed=TRUE, draggable=FALSE, 
         top="1%", left="auto", right=10, bottom="1%", width=360, height="auto", style = "background: rgba(255, 255, 255, 0.8); padding: 10px",
@@ -86,6 +90,7 @@ ui <- fluidPage(
           h2(""),
           img(src="north_arrow.png", right=0, top=20, width = 50),
         )
+     )
     )
 )
 # --------------------------------------------------------------------------------------------------------------------------------
