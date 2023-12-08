@@ -5,7 +5,7 @@ account: justindmau
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 10288116
-bundleId: 7842346
+bundleId: 8023228
 url: https://justindmau.shinyapps.io/eBird_Observation_Map/
 version: 1
 asMultiple: FALSE

@@ -8,7 +8,12 @@
 #
 
 
+# Author: Justin Mau
 
+
+# --------------------------------------------------------------------------------------------------------------------------------
+# Initial code - libraries, globals, basic setup of data, read in data from file  ---------------------------------------------------------- \\
+# --------------------------------------------------------------------------------------------------------------------------------
 library(shiny)
 library(auk)
 library(lubridate)
@@ -19,7 +24,6 @@ library(geojsonio)
 library(sf)
 library(jsonlite)
 library(shinyjs)
-#library(geojsonlint)
 
 
 # globals ----------------------------------
@@ -39,81 +43,75 @@ ebd_speciesList <- ebd_filename %>%
   read_ebd(rollup = FALSE)
 ebd_speciesList <- unique(ebd_speciesList$common_name)
 
-# reads in the csv for the Gallatin County Border
-#gallatin_border <- st_as_sf( st_read("gallatin_county_boundary.geojson"), as= "list")
-#gallatin_border <- geojson_read("gallatin_county_boundary.geojson")
-#FWP <- geojson_read("FWP.geojson", what = "sp")
-
+# reads in the geojsons for the Gallatin County Border and FWP polygons
 gallatin_border <- geojson_read("CountyBorder_Gallatin.geojson")
 FWP <- geojson_read("FWP_Gallatin.geojson", what = "sp")
+# --------------------------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------------------------------------------------------ //
+# --------------------------------------------------------------------------------------------------------------------------------
 
 
 
-# Define UI for application that draws a histogram ---
+
+
+# --------------------------------------------------------------------------------------------------------------------------------
+# User Interface - inputs, map, etc -------------------------------------------------------------------------------------------------------------- \\
+# --------------------------------------------------------------------------------------------------------------------------------
 ui <- fluidPage(
 #ui <- fillPage( 
 
-    useShinyjs(), # got from gpt? might not work
+    includeCSS("style.css"), # honestly not sure if this CSS actually affects anything unfortunately
   
-    sidebarLayout(          
+    sidebarLayout( 
+      
       mainPanel(
-        leafletOutput("map", width="160%", height="1000")
+        leafletOutput("map", width="100vh", height="100vh")
       ),
       
-  
-      absolutePanel(id="settings", fixed=TRUE, draggable=FALSE, 
-                      top="1%", left="auto", right=10, bottom="1%", width=360, height="auto", style = "background: rgba(255, 255, 255, 0.8); padding: 10px",
-                      
-                      h2("eBird Observations Map"),
-                    
-                      checkboxInput("displayClusters_checkbox", "Display Clustered Observations"),
-                      
-                      sliderInput("monthSlider", "Month", min = 1, max = 12, value = 1, step = 1, animate = animationOptions(interval = 1000, loop = TRUE)),
-                      sliderInput("yearSlider", "Years", min = 2002, max = year(Sys.Date()), value = c(2021, 2023), step = 1), 
-                    
-                      #textInput("species_name", h4("Bird Name"), value = "Belted Kingfisher"),
-                      selectInput("species_name", h4("Bird Name"), choices = ebd_speciesList),
-                      #dateInput("start_date", h4("Start Date"), value="2021-01-01"),
-                      #dateInput("end_date", h4("End Date"), value="2023-01-01"),
-                      
-                      h4("Hourly Distribution of Observations"),
-                      plotOutput("distPlot", width = "95%"),
-                      h2(""),
-                      img(src="north_arrow.png", right=0, top=20, width = 50),
-                    )
+      absolutePanel(
+        id="settings", fixed=TRUE, draggable=FALSE, 
+        top="1%", left="auto", right=10, bottom="1%", width=360, height="auto", style = "background: rgba(255, 255, 255, 0.8); padding: 10px",
+          
+          h2("eBird Observations Map"),
+        
+          selectInput("species_name", h4("Bird Name"), choices = ebd_speciesList),
+        
+          checkboxInput("displayClusters_checkbox", "Display Clustered Observations"),
+          
+          sliderInput("monthSlider", "Month", min = 1, max = 12, value = 1, step = 1, animate = animationOptions(interval = 1000, loop = TRUE)),
+          sliderInput("yearSlider", "Years", min = 2002, max = year(Sys.Date()), value = c(2021, 2023), step = 1), 
+          
+          h4("Hourly Distribution of Observations"),
+          plotOutput("distPlot", width = "95%", height="40%"),
+          h2(""),
+          img(src="north_arrow.png", right=0, top=20, width = 50),
+        )
     )
 )
+# --------------------------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------------------------------------------------------------//
+# --------------------------------------------------------------------------------------------------------------------------------
 
 
 
 
-# ---------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------
 
-
-  
-# Define server logic 
+# --------------------------------------------------------------------------------------------------------------------------------
+# Server Logic - processing inputs, generating sf, etc ------------------------------------------------------------------------------------------- \\
+# --------------------------------------------------------------------------------------------------------------------------------
 server <- function(input, output) {
   
-  
-  
-  # renders the basic leaflet map 
+  # renders the basic leaflet map + FWP + Gallatin County Border 
   output$map <- renderLeaflet({
       leaflet(FWP) %>%
-      addProviderTiles(provider = "Esri.WorldTopoMap") %>%
-      addScaleBar(position = "topleft") %>%
-      # addGeoJSON(geojson = 'FWP', data = FWP) %>%
-      addGeoJSON(geojson = gallatin_border, color = "black", weight = 1, fillOpacity = 0) %>%
-      #addGeoJSON(geojson = FWP, color = "orange", weight = 1, fillOpacity = 0, 
-      #            label = ~properties$PUBNAME) %>%
-      addPolygons(stroke = FALSE, fillOpacity = 0.5, fillColor = "orange", 
-                  label = ~paste0(PUBNAME, " ", PUBTYPE)) %>%
-      setView(lng = -111.0, lat = 45.7, zoom = 9.5)
-      
+        addProviderTiles(provider = "Esri.WorldTopoMap") %>%
+        addScaleBar(position = "topleft") %>%
+        addGeoJSON(geojson = gallatin_border, color = "black", weight = 1, fillOpacity = 0) %>%
+        addPolygons(stroke = FALSE, fillOpacity = 0.5, fillColor = "orange", 
+                    label = ~paste0(PUBNAME, " ", PUBTYPE)) %>%
+        setView(lng = -111.0, lat = 45.7, zoom = 9.5)
   })
+
   
   # when inputs change, updates the reactive obs_sf value that gets used by other functions
   obs_sf <- reactive({
@@ -130,19 +128,21 @@ server <- function(input, output) {
   })
   
   
+  
   # variable that is set to the value of the checkbox, so you can turn off clusters
   displayCluster <- reactive({
     input$displayClusters_checkbox
   })
   
+  
+  
   # observe function, so when inputs change, the map layer with observations will update
   observe({
     leafletProxy("map") %>%
       clearGroup('observations')
-      # addTiles() %>%
-      #addGeoJSON(geojson = gallatin_border )
     
-    if (displayCluster()){  # when display cluster checked, uses clusterOptions
+    # when display cluster checked, uses clusterOptions
+    if (displayCluster()){     
       leafletProxy("map") %>%
         addMarkers(
           data = obs_sf(), 
@@ -151,16 +151,7 @@ server <- function(input, output) {
           layerId = ~obs_sf()$checklist_id,
           clusterOptions = markerClusterOptions()
         )
-    } else {
-      # leafletProxy("map") %>%
-      #   addMarkers(
-      #     data = obs_sf(), 
-      #     group = 'observations',
-      #     label = lapply(obs_sf()$locality, HTML),
-      #     layerId = ~obs_sf()$checklist_id,
-      #     options = markerOptions(minZoom = 6, maxZoom = 5)
-      #   )
-    }
+    } 
     
     # adds the heatmap regardless
     leafletProxy("map") %>%
@@ -173,6 +164,8 @@ server <- function(input, output) {
         max= 50
       )
   })
+  
+  
   
   # code for displaying info about the hotspot when you click on it
   showObservationPopup <- function(id, lat, lng){
@@ -188,6 +181,7 @@ server <- function(input, output) {
   }
   
   
+  
   # observe for displaying popups on clicking observations
   observe({
     leafletProxy("map") %>% clearPopups()
@@ -200,36 +194,12 @@ server <- function(input, output) {
       showObservationPopup(clicked_id, clicked_marker$lat, clicked_marker$lng)
     })
   })
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  # IN PROGRESS... ---------------------------------------------------------------------
-  #  ---------------------------------------------------------------------
-  # --------------. \/ \/ \/ \/---------------------------------------------------------------------
 
   
   
-  # adding code to try to visualize observations/migration patterns
-  observeEvent(input$animate, {
-    print("Clicked play button...")
-    # first clears the map of observations
-    leafletProxy("map") %>%
-      clearGroup('observations') %>%
-      clearGroup('heatmap')
-    
-    animate_observations_oneStep()
-  
-  })
-  
-  
+  # observe to visualize monthly observations/migration patterns
   observe({
+    # gets current month from the input
     currentMonth <- input$monthSlider
     
     # first hides all the observations
@@ -237,49 +207,28 @@ server <- function(input, output) {
       clearGroup('observations') %>%
       clearGroup('heatmap')
 
+    # hides every monthly map
     for (i in 1:bin_size){
       leafletProxy("map") %>%
         hideGroup(paste('animated_observations_', as.character(i)))
     }
     
+    # displays the current month's map
     leafletProxy("map") %>%
       showGroup(paste('animated_observations_', as.character(currentMonth)))
   })
     
   
-  # IN PROGRESS... /\ /\ /\ /\ ---------------------------------------------------------------------
-  #  ---------------------------------------------------------------------
-  # --------------. ---------------------------------------------------------------------
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
   
   # reactive function, anytime input updates it will reprocess data and filter
-  # as well as save to geojson format
   filteredData <- reactive({
-    print(input$yearSlider[1])
-    
-    
+    # uses start and end date from the years slider
     startDate = as.Date(paste(input$yearSlider[1], 1, 1, sep="-"))
     endDate = as.Date(paste(input$yearSlider[2], 12, 31, sep="-"))
-    
-    print(startDate)
     
     # define the filters -----------------------
     ebd_filters <- auk_species(ebird_data, species = input$species_name)
     ebd_filters <- auk_date(ebd_filters, date = c(startDate, endDate))
-    
-    # M Trail bbox: -110.9771565,  45.7098916, -110.9769621, 45.7100700
-    # E. Bozeman Area bbox:  -111.11, 45.77, -110.93, 45.59
-    # ebd_filters <- auk_bbox(ebd_filters, bbox = c(-111.11, 45.59, -110.93,  45.77))
-    
     
     # filter data using filters and load in dataframe ------------------
     ebd_filtered <- auk_filter(ebd_filters, file = f_out, overwrite = TRUE)
@@ -287,41 +236,35 @@ server <- function(input, output) {
   })
   
   
+  
   # observe for updating the monthly observations layer
   observe({
+    # gets filtered data, selects important columns
     ebd_df <- filteredData()
     observed_df <- subset(ebd_df, select = c('checklist_id', 'common_name', 'locality', 'observation_count', 'observation_date', 'time_observations_started', 'longitude', 'latitude'))
-    #print(as.integer(format(input$start_date, '%m')))
-    #print(input$end_date)
+    
+    # creates empty obs_list
     obs_list <-list()
     
-    #observed_df$Month <- as.integer(format(observed_df$observation_date, "%m"))
+    # extracts data in each observation month, saves to obs_list
     for (i in 1:bin_size){
-      #print(paste("i = ", i, "   |?|   m = ", as.integer(format(observed_df[["observation_date"]][1], "%m"))))
-      #obs_list[i] = subset(observed_df, 
-      #                     subset = as.integer(format(observation_date, "%m")) == i
       obs_list[[i]] <- observed_df[as.integer(format(observed_df[["observation_date"]], "%m")) == i, ]
-      #print(obs_list[[i]])
     }  
 
     # converts from data.frame to a sf object for each subset of observations to be displayed
     for (i in 1:bin_size){
-      #print(obs_list[[i]])
       sf <- st_as_sf(
         obs_list[[i]],
         coords = c("longitude", "latitude"),
         crs = 4326
       )
+      
+      # updates obs_list to now store the sf 
       obs_list[[i]] <- sf
-      
-      
     }
     
     # now it creates and hides each month's observation
     for (i in 1:bin_size){
-      #print(obs_list[[i]])
-      
-      # adds a heatmap of the observations
       leafletProxy("map") %>%
         clearGroup(paste('animated_observations_', as.character(i))) %>%
         addHeatmap(
@@ -333,6 +276,7 @@ server <- function(input, output) {
         ) %>%
         hideGroup(paste('animated_observations_', as.character(i)))
       
+      # NO LONGER ADDS THE SIMPLE MARKERS, USES HEATMAP INSTEAD
       # adds the individual simple markers for the observations
       #leafletProxy("map") %>%
       #  addMarkers(
@@ -342,19 +286,14 @@ server <- function(input, output) {
       #  hideGroup(paste('animated_observations_', as.character(i)))
     }
     
-    print("okay now it has created all of these observation layers by month, now to try to display them sequentially...   ----------------------------------------")
+    print("Observations successfully split by month...   ----------------------------------------")
   })
-  
-  
-  
+
   
   
   # code to render histogram, calculates avg observation hour
   output$distPlot <- renderPlot({
-
-      # call call filterData() function to get filtered
-      # ebd_df = filterData(input$species_name, input$start_date, input$end_date, c(-111.11, 45.59, -110.93,  45.77))
-    
+      # call filterData() function to get filtered
       ebd_df <- filteredData()
 
       observedTime <- subset(ebd_df, select = c('time_observations_started'))
@@ -377,13 +316,14 @@ server <- function(input, output) {
       print(plt)
 
     })
-  
-  # ADD CODE TO DISPLAY HISTOGRAM FOR SEASONAL OBSERVATION DISTRIBUTION
-  
 }
+# --------------------------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------------------------------------------------------------- //
+# --------------------------------------------------------------------------------------------------------------------------------
 
 
 
 
-# Run the application 
+
+# Run the application ---------------------------------------------------------\
 shinyApp(ui = ui, server = server)
